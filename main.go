@@ -1,29 +1,53 @@
 package main
 
 import (
+	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/joho/godotenv"
 )
 
 func main() {
+	const dataFileName = "airport_data.gob"
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 	listOfAirportsToWatch := []string{"LEPA", "LEBL", "LEIB", "LEAL", "GCTS", "GCLP", "LEBB", "LEMG"}
+	airportDataMap := make(map[string]AirportData)
+	file, err := os.Open(dataFileName)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println("file does not exist, creating it...")
+			airportDataMap = refetchAllAirportData(listOfAirportsToWatch)
+			saveAirportData(airportDataMap, dataFileName)
+		} else {
+			log.Fatal(err)
+		}
+
+	} else {
+		defer file.Close()
+		fmt.Println("File found, decoding data...")
+		decoder := gob.NewDecoder(file)
+		err := decoder.Decode(&airportDataMap)
+		if err != nil {
+			log.Fatalf("error parsing the airport data info. %v", err)
+		}
+	}
+
 	networkData := getVatsimNetworkData()
 	for _, airport := range listOfAirportsToWatch {
-		airportData := getAirportData(airport)
-		numberOfPilots := getNumberOfPilotsDepartingAirport(&networkData.Pilots, &airportData)
+		numberOfPilots := getNumberOfPilotsDepartingAirport(networkData.Pilots, airportDataMap[airport])
 		fmt.Println()
-		fmt.Printf("%v pilots are departing %v at the moment", numberOfPilots, airportData.ICAO)
+		fmt.Printf("%v pilots are departing %v at the moment", numberOfPilots, airportDataMap[airport].ICAO)
 
 	}
 
@@ -88,13 +112,13 @@ func getAirportData(airport string) AirportData {
 	}
 
 }
-func getNumberOfPilotsDepartingAirport(pilots *[]Pilot, airportData *AirportData) int {
+func getNumberOfPilotsDepartingAirport(pilots []Pilot, airportData AirportData) int {
 	numberOfPilots := 0
-	for _, pilot := range *pilots {
+	for _, pilot := range pilots {
 		if pilot.FlightPlan == nil {
 			continue
 		}
-		if pilot.FlightPlan.Departure == airportData.ICAO && determineIfPilotIsOnGround(&pilot, airportData) {
+		if pilot.FlightPlan.Departure == airportData.ICAO && determineIfPilotIsOnGround(pilot, airportData) {
 			numberOfPilots++
 			// fmt.Println("Number of pilots increased")
 			// fmt.Println()
@@ -104,7 +128,7 @@ func getNumberOfPilotsDepartingAirport(pilots *[]Pilot, airportData *AirportData
 	}
 	return numberOfPilots
 }
-func determineIfPilotIsOnGround(pilot *Pilot, airportData *AirportData) bool {
+func determineIfPilotIsOnGround(pilot Pilot, airportData AirportData) bool {
 	const elevationMarginFt = 200
 	const maxGroundSpeedKts = 50
 	const maxRadiusFromAirportCenterPointKm = 6 // This is waaay to much for most airports, but since the limiting factor will be the speed and the aircraft altitude, this is basically just to check if the aircraft is not at other airport
@@ -144,4 +168,34 @@ func haversineDistanceKm(lat1, lon1, lat2, lon2 float64) float64 {
 
 	distance := R * c        // Distance in meters
 	return distance / 1000.0 // Convert to kilometers
+}
+
+func refetchAllAirportData(listOfAirportsToWatch []string) map[string]AirportData {
+	airportDataMap := make(map[string]AirportData)
+	var wg sync.WaitGroup
+	for _, airportIcao := range listOfAirportsToWatch {
+		wg.Add(1)
+		go func(icao string) {
+			defer wg.Done()
+			airportData := getAirportData(icao)
+			airportDataMap[icao] = airportData
+		}(airportIcao)
+
+	}
+	wg.Wait()
+	return airportDataMap
+}
+
+func saveAirportData(airportData map[string]AirportData, fileName string) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	encoder := gob.NewEncoder(file)
+	if err := encoder.Encode(airportData); err != nil {
+		fmt.Printf("Error encoding map to Gob: %v\n", err)
+		return err
+	}
+	return nil
 }
