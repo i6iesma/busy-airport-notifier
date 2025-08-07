@@ -2,6 +2,18 @@ package main
 
 import "time"
 
+// This is the push subscription structure we get from the json in the clienet
+type Subscription struct {
+	Endpoint       string `json:"endpoint"`
+	ExpirationTime *int   `json:"expirationTime"`
+	Keys           Keys   `json:"keys"`
+}
+
+type Keys struct {
+	Auth   string `json:"auth"`
+	P256dh string `json:"p256dh"`
+}
+
 // The relevant data we need from the airport api
 type AirportData struct {
 	ICAO        string

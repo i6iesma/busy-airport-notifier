@@ -15,33 +15,12 @@ type User struct {
 	City string `json:"city"`
 }
 
-// getUsersHandler handles requests to the /users endpoint.
-// func getUsersHandler(w http.ResponseWriter, r *http.Request) {
-// 	// Only allow GET requests.
-// 	if r.Method != http.MethodGet {
-// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-// 		return
-// 	}
+func subscribeHandler(w http.ResponseWriter, r *http.Request) {
 
-// 	// Hardcoded list of users. In a real application, this would come from a database.
-// 	users := []User{
-// 		{ID: 1, Name: "Alice", City: "New York"},
-// 		{ID: 2, Name: "Bob", City: "London"},
-// 		{ID: 3, Name: "Charlie", City: "Paris"},
-// 	}
-
-// 	// Set the Content-Type header to indicate that we're sending JSON.
-// 	w.Header().Set("Content-Type", "application/json")
-
-// 	// Encode the users slice to JSON and write it to the response writer.
-// 	if err != nil {
-// 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
-// 		return
-// 	}
-// }
+}
 
 // helloHandler handles requests to the /hello endpoint.
-func helloHandler(w http.ResponseWriter, r *http.Request) {
+func getDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow GET requests.
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -66,7 +45,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Register our handlers for the different URL patterns.
-	mux.HandleFunc("/hello", helloHandler)
+	mux.HandleFunc("/data", getDataHandler)
+	mux.HandleFunc("/subscribe", subscribeHandler)
 
 	// Define the server address and port.
 	addr := "localhost:8080"

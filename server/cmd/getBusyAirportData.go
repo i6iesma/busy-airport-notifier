@@ -26,7 +26,7 @@ func GetBusyAirportData() map[string]int {
 	file, err := os.Open(dataFileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println("file does not exist, creating it...")
+			// fmt.Println("file does not exist, creating it...")
 			airportDataMap = refetchAllAirportData(listOfAirportsToWatch)
 			saveAirportData(airportDataMap, dataFileName)
 		} else {
@@ -35,7 +35,7 @@ func GetBusyAirportData() map[string]int {
 
 	} else {
 		defer file.Close()
-		fmt.Println("File found, decoding data...")
+		// fmt.Println("File found, decoding data...")
 		decoder := gob.NewDecoder(file)
 		err := decoder.Decode(&airportDataMap)
 		if err != nil {
