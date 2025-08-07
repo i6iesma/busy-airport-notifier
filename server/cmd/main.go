@@ -26,6 +26,7 @@ func getDataHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	log.Printf("Received request from %s\n", r.RemoteAddr)
 
 	airportDataMap := GetBusyAirportData()
 
